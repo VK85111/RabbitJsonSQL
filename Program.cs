@@ -17,6 +17,7 @@ namespace RabbitMQ_simple_SQL_Solution
         public static void Main(string[] args)
         {
             var factory = new ConnectionFactory() { HostName = "localhost", UserName = "Keks", Password = "Kokoko" };
+            //Как хранить эту строку с настройками в App.config?
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
@@ -27,6 +28,7 @@ namespace RabbitMQ_simple_SQL_Solution
                                      arguments: null);
 
                 var consumer = new EventingBasicConsumer(channel);
+                //почему тип не задали для model, ea?
                 consumer.Received += (model, ea) =>
                 {
                     var body = ea.Body.ToArray();
@@ -37,12 +39,24 @@ namespace RabbitMQ_simple_SQL_Solution
                     Console.WriteLine(rootobjectjson.action);
                     //Console.WriteLine(Convert.ToDateTime(rootobjectjson.timestamp));//Конвертация теперь в классе
                     Console.WriteLine(rootobjectjson.timestamp);
-                    Console.WriteLine(rootobjectjson.data.LeasingCalculation);
+                    Console.WriteLine(rootobjectjson.data.summary);
+                    Console.WriteLine(rootobjectjson.data.leasingcalculation);
+
+                    //string[] arrayToSQL = new string[4];//Как сделать массив с разными типами внутри?
+                    ////Видимо никак
+                    //arrayToSQL[0] = rootobjectjson.action;
+                    //arrayToSQL[1] = "tmstmp";//rootobjectjson.timestamp; 
+                    //arrayToSQL[2] = rootobjectjson.data.leasingcalculation;
+                    //arrayToSQL[3] = "5000";//rootobjectjson.data.summary;
+
+                    SQL_tools.SendToMS_SQL(rootobjectjson);
 
                 };
 
                 channel.BasicConsume(queue: "FM", autoAck: true, consumer: consumer);
 
+                Console.WriteLine(consumer.Model); //а где ea и почему M большая?
+                
                 Console.ReadLine();
 
             }
@@ -56,26 +70,59 @@ namespace RabbitMQ_simple_SQL_Solution
             public string model { get; set; }
             public Data data { get; set; }
             public string comment { get; set; }
+
         }
 
         public class Data
         {
-            public string Number { get; set; }
-            public string LeasingCalculation { get; set; }
-            public DateTime Date { get; set; }
-            public string BldBlp { get; set; }
-            public int Summary { get; set; }
+            public string number { get; set; }
+            public string leasingcalculation { get; set; }
+            public DateTime date { get; set; }
+            public string bldblp { get; set; }
+            public decimal summary { get; set; }
+
         }
-        public static void SendToMS_SQL(string[] Inform)
+
+        public static class SQL_tools
         {
-            private static SqlConnection sqlConnection = null;
-            sqlConnection = new SqlConnection("Data Source=DESKTOP-H7V76C2;Initial Catalog=TEST_BD;Integrated Security=True");
-            sqlConnection.Open();
+            public static void SendToMS_SQL(Rootobject args)
+            {
+                SqlConnection sqlConnection = null;
+                sqlConnection = new SqlConnection(GetConnectionStringByName("SQL_URL"));
+                sqlConnection.Open();
 
-            SqlCommand sqlCommand = new SqlCommand("INSERT INTO [FM_data]([action],[timestamp],[LeasingCalculation],[Summary]) VALUES ('action','timestamp','LeasingCalculation','Summary')", sqlConnection);
-            sqlCommand.ExecuteNonQuery();
+                SqlCommand sqlCommand = new SqlCommand($"INSERT INTO [FM_data]([action], [timestamp], [number], " +
+                    $"[leasingcalculation], [date], [bldblp], [summary]) " +
+                    $"VALUES (@action, @timestamp, @number, @leasingcalculation, @date, @bldblp, @summary)", sqlConnection);
+                //sqlCommand.Parameters.AddRange(parameters); //Нужен пример этого исполнения
+                sqlCommand.Parameters.AddWithValue("@action", args.action);
+                sqlCommand.Parameters.AddWithValue("@timestamp", args.timestamp);
+                sqlCommand.Parameters.AddWithValue("@leasingcalculation", args.data.leasingcalculation);
+                sqlCommand.Parameters.AddWithValue("@number", args.data.number);
+                sqlCommand.Parameters.AddWithValue("@date", args.data.date);
+                sqlCommand.Parameters.AddWithValue("@bldblp", args.data.bldblp);
+                sqlCommand.Parameters.AddWithValue("@summary", args.data.summary);
+                sqlCommand.ExecuteNonQuery();
 
-            sqlConnection.Close();
+                sqlConnection.Close();
+
+            }
+
+            private static string GetConnectionStringByName(string name)
+            {
+                // Assume failure.
+                string returnValue = null;
+
+                // Look for the name in the connectionStrings section.
+                ConnectionStringSettings settings =
+                    ConfigurationManager.ConnectionStrings[name];
+
+                // If found, return the connection string.
+                if (settings != null)
+                    returnValue = settings.ConnectionString;
+
+                return returnValue;
+            }
         }
     }
 }
