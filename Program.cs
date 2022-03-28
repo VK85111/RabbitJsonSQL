@@ -34,8 +34,7 @@ namespace RabbitMQ_simple_SQL_Solution
                     var rootobjectjson = new Rootobject();
                     rootobjectjson = JsonSerializer.Deserialize<Rootobject>(message);
                     //Console.WriteLine(Convert.ToDateTime(rootobjectjson.timestamp));//Конвертация теперь в классе
-                    Console.WriteLine(rootobjectjson.data.leasingcalculation);
-
+                    
                     //string[] arrayToSQL = new string[4];//Как сделать массив с разными типами внутри?
                     ////Видимо никак
                     //arrayToSQL[0] = rootobjectjson.action;
@@ -43,14 +42,14 @@ namespace RabbitMQ_simple_SQL_Solution
                     //arrayToSQL[2] = rootobjectjson.data.leasingcalculation;
                     //arrayToSQL[3] = "5000";//rootobjectjson.data.summary;
 
-                    //SQL_tools.DeleteFromMS_SQL(rootobjectjson);//Не работает
+                    SQL_tools.DeleteFromMS_SQL(rootobjectjson);
                     SQL_tools.SendToMS_SQL(rootobjectjson);
 
                 };
 
                 channel.BasicConsume(queue: "FM", autoAck: true, consumer: consumer);
 
-                Console.WriteLine(consumer.Model); //а где ea и почему M у Model большая?
+                //Console.WriteLine(consumer.Model); //а где ea и почему M у Model большая?
                 
                 Console.ReadLine();
 
@@ -88,7 +87,7 @@ namespace RabbitMQ_simple_SQL_Solution
                 sqlConnection = new SqlConnection(GetConnectionStringByName("SQL_URL"));
                 sqlConnection.Open();
 
-                SqlCommand sqlCommand = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID");
+                SqlCommand sqlCommand = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID", sqlConnection);
                 sqlCommand.Parameters.AddWithValue("@GUID", args.data.GUID);
                 sqlCommand.ExecuteNonQuery();
 
@@ -101,10 +100,11 @@ namespace RabbitMQ_simple_SQL_Solution
 
                 //Получить объяснение NuGet package, почему так по разному подключаются библиотеки?
 
-                SqlCommand sqlCommand0 = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID", sqlConnection);
-                //Можно ли сделать одну сущность sqlCommand, но менять только текст запроса? Чтоб параметры остались.
-                sqlCommand0.Parameters.AddWithValue("@GUID", args.data.GUID);
-                sqlCommand0.ExecuteNonQuery(); //Альтернативы этого NonQuery?
+                //SqlCommand sqlCommand0 = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID", sqlConnection);
+                ////Почему не переопределилась sqlCommand?
+                ////Можно ли сделать одну сущность sqlCommand, но менять только текст запроса? Чтоб параметры остались.
+                //sqlCommand0.Parameters.AddWithValue("@GUID", args.data.GUID);
+                //sqlCommand0.ExecuteNonQuery(); //Альтернативы этого NonQuery?
 
                 SqlCommand sqlCommand = new SqlCommand($"INSERT INTO [FM_data]([GUID], [action], [timestamp], [number], " +
                     $"[leasingcalculation], [date], [bldblp], [summary]) " +
