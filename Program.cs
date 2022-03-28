@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using RabbitMQ.Client;
@@ -18,8 +14,9 @@ namespace RabbitMQ_simple_SQL_Solution
         {
             var factory = new ConnectionFactory() { HostName = "localhost", UserName = "Keks", Password = "Kokoko" };
             //Как хранить эту строку с настройками в App.config?
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            using (var connection = factory.CreateConnection()) //Простыми словами в понятиях 1С про using?
+            using (var channel = connection.CreateModel()) //Я так понял это из-за connection в котором сидит channel
+            //Почему не просто var channel = connection.CreateModel() в стиле 1С?
             {
                 channel.QueueDeclare(queue: "FM",
                                      durable: true,
@@ -36,10 +33,7 @@ namespace RabbitMQ_simple_SQL_Solution
 
                     var rootobjectjson = new Rootobject();
                     rootobjectjson = JsonSerializer.Deserialize<Rootobject>(message);
-                    Console.WriteLine(rootobjectjson.action);
                     //Console.WriteLine(Convert.ToDateTime(rootobjectjson.timestamp));//Конвертация теперь в классе
-                    Console.WriteLine(rootobjectjson.timestamp);
-                    Console.WriteLine(rootobjectjson.data.summary);
                     Console.WriteLine(rootobjectjson.data.leasingcalculation);
 
                     //string[] arrayToSQL = new string[4];//Как сделать массив с разными типами внутри?
@@ -49,20 +43,21 @@ namespace RabbitMQ_simple_SQL_Solution
                     //arrayToSQL[2] = rootobjectjson.data.leasingcalculation;
                     //arrayToSQL[3] = "5000";//rootobjectjson.data.summary;
 
+                    //SQL_tools.DeleteFromMS_SQL(rootobjectjson);//Не работает
                     SQL_tools.SendToMS_SQL(rootobjectjson);
 
                 };
 
                 channel.BasicConsume(queue: "FM", autoAck: true, consumer: consumer);
 
-                Console.WriteLine(consumer.Model); //а где ea и почему M большая?
+                Console.WriteLine(consumer.Model); //а где ea и почему M у Model большая?
                 
                 Console.ReadLine();
 
             }
 
         }
-
+        //Имеет ли смысл вывести эти сущности (типа метаданные справочники) в отдельные *.cs файлы? Как принято?
         public class Rootobject
         {
             public DateTime timestamp { get; set; }
@@ -75,6 +70,7 @@ namespace RabbitMQ_simple_SQL_Solution
 
         public class Data
         {
+            public string GUID { get; set; }
             public string number { get; set; }
             public string leasingcalculation { get; set; }
             public DateTime date { get; set; }
@@ -83,18 +79,38 @@ namespace RabbitMQ_simple_SQL_Solution
 
         }
 
-        public static class SQL_tools
+        public static class SQL_tools //Может это уже новый Namespace? Типа своя подсистема.
         {
+            public static void DeleteFromMS_SQL(Rootobject args)
+            {   
+                //Копипаста, вывести в отдельную процедуру
+                SqlConnection sqlConnection = null;
+                sqlConnection = new SqlConnection(GetConnectionStringByName("SQL_URL"));
+                sqlConnection.Open();
+
+                SqlCommand sqlCommand = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID");
+                sqlCommand.Parameters.AddWithValue("@GUID", args.data.GUID);
+                sqlCommand.ExecuteNonQuery();
+
+            }
             public static void SendToMS_SQL(Rootobject args)
             {
                 SqlConnection sqlConnection = null;
                 sqlConnection = new SqlConnection(GetConnectionStringByName("SQL_URL"));
                 sqlConnection.Open();
 
-                SqlCommand sqlCommand = new SqlCommand($"INSERT INTO [FM_data]([action], [timestamp], [number], " +
+                //Получить объяснение NuGet package, почему так по разному подключаются библиотеки?
+
+                SqlCommand sqlCommand0 = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID", sqlConnection);
+                //Можно ли сделать одну сущность sqlCommand, но менять только текст запроса? Чтоб параметры остались.
+                sqlCommand0.Parameters.AddWithValue("@GUID", args.data.GUID);
+                sqlCommand0.ExecuteNonQuery(); //Альтернативы этого NonQuery?
+
+                SqlCommand sqlCommand = new SqlCommand($"INSERT INTO [FM_data]([GUID], [action], [timestamp], [number], " +
                     $"[leasingcalculation], [date], [bldblp], [summary]) " +
-                    $"VALUES (@action, @timestamp, @number, @leasingcalculation, @date, @bldblp, @summary)", sqlConnection);
+                    $"VALUES (@GUID, @action, @timestamp, @number, @leasingcalculation, @date, @bldblp, @summary)", sqlConnection);
                 //sqlCommand.Parameters.AddRange(parameters); //Нужен пример этого исполнения
+                sqlCommand.Parameters.AddWithValue("@GUID", args.data.GUID);
                 sqlCommand.Parameters.AddWithValue("@action", args.action);
                 sqlCommand.Parameters.AddWithValue("@timestamp", args.timestamp);
                 sqlCommand.Parameters.AddWithValue("@leasingcalculation", args.data.leasingcalculation);
