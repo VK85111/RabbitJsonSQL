@@ -91,6 +91,8 @@ namespace RabbitMQ_simple_SQL_Solution
                 sqlCommand.Parameters.AddWithValue("@GUID", args.data.GUID);
                 sqlCommand.ExecuteNonQuery();
 
+                sqlConnection.Close();// Что будет если не закрыть?
+
             }
             public static void SendToMS_SQL(Rootobject args)
             {
