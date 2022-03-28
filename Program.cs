@@ -82,7 +82,7 @@ namespace RabbitMQ_simple_SQL_Solution
         {
             public static void DeleteFromMS_SQL(Rootobject args)
             {   
-                //Копипаста, вывести в отдельную процедуру
+                //Копипаста, вывести в отдельную функцию
                 SqlConnection sqlConnection = null;
                 sqlConnection = new SqlConnection(GetConnectionStringByName("SQL_URL"));
                 sqlConnection.Open();
@@ -105,6 +105,7 @@ namespace RabbitMQ_simple_SQL_Solution
                 //SqlCommand sqlCommand0 = new SqlCommand("DELETE FROM [FM_data] WHERE[GUID] = @GUID", sqlConnection);
                 ////Почему не переопределилась sqlCommand?
                 ////Можно ли сделать одну сущность sqlCommand, но менять только текст запроса? Чтоб параметры остались.
+                ////Я так понял это будет sqlCommand.CommandText = "";
                 //sqlCommand0.Parameters.AddWithValue("@GUID", args.data.GUID);
                 //sqlCommand0.ExecuteNonQuery(); //Альтернативы этого NonQuery?
 
